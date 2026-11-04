@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarDays, Plus, Sparkles } from "lucide-react";
+import { CalendarDays, Plus, Sparkles, LogOut } from "lucide-react";
 
 import Header from "@/components/Header";
 import ProgressCard from "@/components/ProgressCard";
@@ -10,6 +10,7 @@ import Analytics from "@/components/Analytics";
 
 import { calculateBalance } from "@/services/balance";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Transaction } from "@/types/transaction";
 import type { Space } from "@/services/spaces";
 
@@ -20,6 +21,8 @@ interface DashboardProps {
 }
 
 function Dashboard({ space }: DashboardProps) {
+  const { signOut } = useAuth();
+
   const {
     transactions,
     loading: transactionsLoading,
@@ -36,7 +39,6 @@ function Dashboard({ space }: DashboardProps) {
 
   const balance = calculateBalance(transactions);
 
-  // Sort by date, newest first.
   const sortedTransactions = [...transactions].sort((a, b) =>
     b.transactionDate.localeCompare(a.transactionDate),
   );
@@ -68,7 +70,18 @@ function Dashboard({ space }: DashboardProps) {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-      <Header />
+      <div className="flex items-center justify-between gap-4">
+        <Header spaceId={space.id} />
+
+        <button
+          type="button"
+          onClick={signOut}
+          className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-zinc-400 transition hover:border-red-400/30 hover:bg-red-400/5 hover:text-red-400"
+        >
+          <LogOut size={16} />
+          Sign out
+        </button>
+      </div>
 
       {transactionsLoading && (
         <p className="mt-6 text-sm text-zinc-500">Loading transactions...</p>
@@ -78,7 +91,6 @@ function Dashboard({ space }: DashboardProps) {
         <p className="mt-6 text-sm text-red-400">{transactionsError}</p>
       )}
 
-      {/* Main navigation */}
       <nav className="mt-8 flex items-center gap-2 border-b border-white/[0.07] pb-3">
         <button
           type="button"
@@ -105,7 +117,6 @@ function Dashboard({ space }: DashboardProps) {
         </button>
       </nav>
 
-      {/* Page heading and actions */}
       <div className="mt-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
