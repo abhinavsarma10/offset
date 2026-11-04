@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import CreateSpace from "./pages/CreateSpace";
+import ResetPassword from "./pages/ResetPassword";
 
 import { useAuth } from "./contexts/AuthContext";
 import { getMySpaces, type Space } from "./services/spaces";
@@ -38,11 +39,9 @@ function App() {
       try {
         let acceptedSpaceId: string | null = null;
 
-        // Accept an invitation before loading the user's spaces.
         if (invitationToken) {
           acceptedSpaceId = await acceptInvitation(invitationToken);
 
-          // Remove the invitation token from the browser URL.
           window.history.replaceState({}, "", window.location.pathname);
         }
 
@@ -52,7 +51,6 @@ function App() {
 
         setSpaces(userSpaces);
 
-        // Open the newly joined space, or the first available space.
         const targetSpace =
           userSpaces.find((space) => space.id === acceptedSpaceId) ??
           userSpaces[0] ??
@@ -79,7 +77,20 @@ function App() {
     };
   }, [user, invitationToken]);
 
-  if (authLoading || loadingSpaces) {
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+        Loading Offset...
+      </div>
+    );
+  }
+
+  // Handle Supabase password recovery before rendering the dashboard.
+  if (window.location.pathname === "/reset-password") {
+    return <ResetPassword />;
+  }
+
+  if (loadingSpaces) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
         Loading Offset...

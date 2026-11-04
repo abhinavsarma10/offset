@@ -1,32 +1,43 @@
 import { useState, type FormEvent } from "react";
-import { Wallet } from "lucide-react";
+import { Wallet, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function Auth() {
-  const { signIn, signUp } = useAuth();
+type AuthMode = "signin" | "signup" | "forgot";
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+export default function Auth() {
+  const { signIn, signUp, resetPassword } = useAuth();
+
+  const [mode, setMode] = useState<AuthMode>("signin");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    setSuccess(false);
 
     try {
       if (mode === "signin") {
         await signIn(email, password);
-      } else {
+      } else if (mode === "signup") {
         await signUp(email, password, displayName.trim());
         setMessage(
           "Account created. Check your email if confirmation is required.",
         );
+        setSuccess(true);
+      } else {
+        await resetPassword(email);
+        setMessage(
+          "If an account exists with this email, you'll receive a password reset link shortly.",
+        );
+        setSuccess(true);
       }
     } catch (error) {
       setMessage(
@@ -35,6 +46,12 @@ export default function Auth() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function changeMode(nextMode: AuthMode) {
+    setMode(nextMode);
+    setMessage("");
+    setSuccess(false);
   }
 
   return (
@@ -55,42 +72,53 @@ export default function Auth() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7 shadow-2xl">
-          <div className="mb-6 grid grid-cols-2 rounded-xl bg-zinc-900 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("signin");
-                setMessage("");
-              }}
-              className={`rounded-lg py-2 text-sm font-medium ${
-                mode === "signin" ? "bg-zinc-800 text-white" : "text-zinc-500"
-              }`}
-            >
-              Sign in
-            </button>
+          {mode !== "forgot" ? (
+            <div className="mb-6 grid grid-cols-2 rounded-xl bg-zinc-900 p-1">
+              <button
+                type="button"
+                onClick={() => changeMode("signin")}
+                className={`rounded-lg py-2 text-sm font-medium ${
+                  mode === "signin" ? "bg-zinc-800 text-white" : "text-zinc-500"
+                }`}
+              >
+                Sign in
+              </button>
 
+              <button
+                type="button"
+                onClick={() => changeMode("signup")}
+                className={`rounded-lg py-2 text-sm font-medium ${
+                  mode === "signup" ? "bg-zinc-800 text-white" : "text-zinc-500"
+                }`}
+              >
+                Create account
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              onClick={() => {
-                setMode("signup");
-                setMessage("");
-              }}
-              className={`rounded-lg py-2 text-sm font-medium ${
-                mode === "signup" ? "bg-zinc-800 text-white" : "text-zinc-500"
-              }`}
+              onClick={() => changeMode("signin")}
+              className="mb-6 flex items-center gap-2 text-sm text-zinc-400 transition hover:text-white"
             >
-              Create account
+              <ArrowLeft size={16} />
+              Back to sign in
             </button>
-          </div>
+          )}
 
           <h2 className="text-xl font-semibold">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "signin"
+              ? "Welcome back"
+              : mode === "signup"
+                ? "Create your account"
+                : "Reset your password"}
           </h2>
 
           <p className="mt-1 mb-6 text-sm text-zinc-500">
             {mode === "signin"
               ? "Sign in to access your shared spaces."
-              : "Get started with your first shared space."}
+              : mode === "signup"
+                ? "Get started with your first shared space."
+                : "Enter your email address and we'll send you a reset link."}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -126,37 +154,60 @@ export default function Auth() {
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm text-zinc-300">
-                Password
-              </label>
-              <Input
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 8 characters"
-                className="border-white/10 bg-zinc-900 text-white"
-              />
-            </div>
+            {mode !== "forgot" && (
+              <div>
+                <label className="mb-2 block text-sm text-zinc-300">
+                  Password
+                </label>
+                <Input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  className="border-white/10 bg-zinc-900 text-white"
+                />
+              </div>
+            )}
+
+            {mode === "signin" && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => changeMode("forgot")}
+                  className="text-sm text-emerald-400 transition hover:text-emerald-300"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             {message && (
-              <p className="text-sm text-amber-400" role="status">
+              <p
+                className={`text-sm ${
+                  success ? "text-emerald-400" : "text-amber-400"
+                }`}
+                role="status"
+              >
                 {message}
               </p>
             )}
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || (mode === "forgot" && success)}
               className="w-full bg-emerald-400 text-zinc-950 hover:bg-emerald-300"
             >
               {loading
                 ? "Please wait..."
                 : mode === "signin"
                   ? "Sign in"
-                  : "Create account"}
+                  : mode === "signup"
+                    ? "Create account"
+                    : success
+                      ? "Email requested"
+                      : "Send reset link"}
             </Button>
           </form>
         </div>
