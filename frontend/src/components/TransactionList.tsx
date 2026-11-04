@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Pencil, Trash2, Receipt, ArrowRight } from "lucide-react";
 import type { Transaction } from "@/types/transaction";
 import { formatCurrency } from "@/services/format";
@@ -5,7 +6,7 @@ import { formatCurrency } from "@/services/format";
 interface TransactionListProps {
   transactions: Transaction[];
   onEdit: (transaction: Transaction) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
   title?: string;
   description?: string;
   onViewAll?: () => void;
@@ -27,8 +28,36 @@ function TransactionList({
   description = "Reimbursement history",
   onViewAll,
 }: TransactionListProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDelete(transaction: Transaction) {
+    const confirmed = window.confirm(`Delete "${transaction.description}"?`);
+
+    if (!confirmed) return;
+
+    setDeletingId(transaction.id);
+    setDeleteError("");
+
+    try {
+      await onDelete(transaction.id);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error
+          ? err.message
+          : "Unable to delete transaction. Please try again.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 sm:p-6">
+      {deleteError && (
+        <p className="mb-4 text-sm text-red-400">{deleteError}</p>
+      )}
+
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-white">{title}</h2>
@@ -97,17 +126,10 @@ function TransactionList({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Delete "${transaction.description}"?`
-                        )
-                      ) {
-                        onDelete(transaction.id);
-                      }
-                    }}
+                    onClick={() => handleDelete(transaction)}
+                    disabled={deletingId !== null}
                     aria-label={`Delete ${transaction.description}`}
-                    className="rounded-lg p-2 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
+                    className="rounded-lg p-2 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 size={15} />
                   </button>

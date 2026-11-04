@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-  CalendarDays,
-  Plus,
-  Sparkles,
-  RefreshCw,
-} from "lucide-react";
+import { CalendarDays, Plus, Sparkles } from "lucide-react";
 
 import Header from "@/components/Header";
 import ProgressCard from "@/components/ProgressCard";
@@ -16,17 +11,23 @@ import Analytics from "@/components/Analytics";
 import { calculateBalance } from "@/services/balance";
 import { useTransactions } from "@/hooks/useTransactions";
 import type { Transaction } from "@/types/transaction";
+import type { Space } from "@/services/spaces";
 
 type DashboardView = "overview" | "transactions";
 
-function Dashboard() {
+interface DashboardProps {
+  space: Space;
+}
+
+function Dashboard({ space }: DashboardProps) {
   const {
     transactions,
+    loading: transactionsLoading,
+    error: transactionsError,
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    resetTransactions,
-  } = useTransactions();
+  } = useTransactions(space.id);
 
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -37,20 +38,17 @@ function Dashboard() {
 
   // Sort by date, newest first.
   const sortedTransactions = [...transactions].sort((a, b) =>
-    b.transactionDate.localeCompare(a.transactionDate)
+    b.transactionDate.localeCompare(a.transactionDate),
   );
 
   const recentTransactions = sortedTransactions.slice(0, 3);
 
-  function handleSave(transaction: Transaction) {
+  async function handleSave(transaction: Transaction): Promise<void> {
     if (editingTransaction) {
-      updateTransaction(transaction);
+      await updateTransaction(transaction);
     } else {
-      addTransaction(transaction);
+      await addTransaction(transaction);
     }
-
-    setEditingTransaction(null);
-    setIsFormOpen(false);
   }
 
   function handleAdd() {
@@ -71,6 +69,14 @@ function Dashboard() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
       <Header />
+
+      {transactionsLoading && (
+        <p className="mt-6 text-sm text-zinc-500">Loading transactions...</p>
+      )}
+
+      {transactionsError && (
+        <p className="mt-6 text-sm text-red-400">{transactionsError}</p>
+      )}
 
       {/* Main navigation */}
       <nav className="mt-8 flex items-center gap-2 border-b border-white/[0.07] pb-3">
@@ -107,7 +113,7 @@ function Dashboard() {
           </p>
 
           <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            {activeView === "overview" ? "Hey there." : "Transactions"}
+            {activeView === "overview" ? space.name : "Transactions"}
           </h2>
 
           <p className="mt-2 text-sm text-zinc-500">
@@ -123,23 +129,6 @@ function Dashboard() {
               <CalendarDays size={14} />
               October 29, 2026
             </div>
-          )}
-
-          {import.meta.env.DEV && (
-            <button
-              type="button"
-              onClick={() => {
-                const confirmed = window.confirm(
-                  "Reset all transactions to the original demo data? This will discard all local changes."
-                );
-
-                if (confirmed) resetTransactions();
-              }}
-              className="flex items-center gap-2 rounded-xl border border-white/[0.08] px-3 py-2.5 text-xs text-zinc-400 transition hover:border-white/20 hover:text-white"
-            >
-              <RefreshCw size={14} />
-              Reset demo data
-            </button>
           )}
 
           <button

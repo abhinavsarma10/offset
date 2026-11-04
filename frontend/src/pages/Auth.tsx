@@ -8,6 +8,7 @@ export default function Auth() {
   const { signIn, signUp } = useAuth();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,12 +23,14 @@ export default function Auth() {
       if (mode === "signin") {
         await signIn(email, password);
       } else {
-        await signUp(email, password);
-        setMessage("Account created. Check your email if confirmation is required.");
+        await signUp(email, password, displayName.trim());
+        setMessage(
+          "Account created. Check your email if confirmation is required.",
+        );
       }
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Something went wrong."
+        error instanceof Error ? error.message : "Something went wrong.",
       );
     } finally {
       setLoading(false);
@@ -60,9 +63,7 @@ export default function Auth() {
                 setMessage("");
               }}
               className={`rounded-lg py-2 text-sm font-medium ${
-                mode === "signin"
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-500"
+                mode === "signin" ? "bg-zinc-800 text-white" : "text-zinc-500"
               }`}
             >
               Sign in
@@ -75,9 +76,7 @@ export default function Auth() {
                 setMessage("");
               }}
               className={`rounded-lg py-2 text-sm font-medium ${
-                mode === "signup"
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-500"
+                mode === "signup" ? "bg-zinc-800 text-white" : "text-zinc-500"
               }`}
             >
               Create account
@@ -95,6 +94,24 @@ export default function Auth() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === "signup" && (
+              <div>
+                <label className="mb-2 block text-sm text-zinc-300">
+                  Display name
+                </label>
+                <Input
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={40}
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="e.g. Abhinav"
+                  className="border-white/10 bg-zinc-900 text-white"
+                />
+              </div>
+            )}
+
             <div>
               <label className="mb-2 block text-sm text-zinc-300">
                 Email address

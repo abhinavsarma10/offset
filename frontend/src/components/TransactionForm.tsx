@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import type {
-  Transaction,
-  TransactionCategory,
-} from "@/types/transaction";
+import type { Transaction, TransactionCategory } from "@/types/transaction";
 
 interface TransactionFormProps {
   open: boolean;
   onClose: () => void;
-  onSave: (transaction: Transaction) => void;
+  onSave: (transaction: Transaction) => Promise<void>;
   initialTransaction?: Transaction | null;
 }
 
@@ -25,9 +22,7 @@ const categories: TransactionCategory[] = [
 function getTodayDate() {
   const today = new Date();
   const offset = today.getTimezoneOffset();
-  return new Date(today.getTime() - offset * 60_000)
-    .toISOString()
-    .slice(0, 10);
+  return new Date(today.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
 
 function TransactionForm({
@@ -38,12 +33,11 @@ function TransactionForm({
 }: TransactionFormProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] =
-    useState<TransactionCategory>("Other");
-  const [transactionDate, setTransactionDate] =
-    useState(getTodayDate());
+  const [category, setCategory] = useState<TransactionCategory>("Other");
+  const [transactionDate, setTransactionDate] = useState(getTodayDate());
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -51,12 +45,10 @@ function TransactionForm({
       setAmount(
         initialTransaction
           ? (initialTransaction.amountCents / 100).toFixed(2)
-          : ""
+          : "",
       );
       setCategory(initialTransaction?.category ?? "Other");
-      setTransactionDate(
-        initialTransaction?.transactionDate ?? getTodayDate()
-      );
+      setTransactionDate(initialTransaction?.transactionDate ?? getTodayDate());
       setNotes(initialTransaction?.notes ?? "");
       setError("");
     }
@@ -64,8 +56,10 @@ function TransactionForm({
 
   if (!open) return null;
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isSaving) return;
 
     const amountInCents = Math.round(Number(amount) * 100);
 
@@ -94,8 +88,21 @@ function TransactionForm({
       notes: notes.trim() || undefined,
     };
 
-    onSave(transaction);
-    onClose();
+    setIsSaving(true);
+    setError("");
+
+    try {
+      await onSave(transaction);
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to save transaction. Please try again.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -182,9 +189,7 @@ function TransactionForm({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-300">
-                Date
-              </label>
+              <label className="mb-2 block text-sm text-zinc-300">Date</label>
               <input
                 type="date"
                 value={transactionDate}
@@ -208,9 +213,7 @@ function TransactionForm({
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-400">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-400">{error}</p>}
 
           <div className="flex justify-end gap-3 pt-2">
             <button
@@ -223,9 +226,14 @@ function TransactionForm({
 
             <button
               type="submit"
-              className="rounded-xl bg-emerald-400 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300"
+              disabled={isSaving}
+              className="rounded-xl bg-emerald-400 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {initialTransaction ? "Save changes" : "Add transaction"}
+              {isSaving
+                ? "Saving..."
+                : initialTransaction
+                  ? "Save changes"
+                  : "Add transaction"}
             </button>
           </div>
         </form>
